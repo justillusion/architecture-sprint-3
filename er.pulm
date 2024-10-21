@@ -1,0 +1,123 @@
+@startuml
+title ER-диаграмма основных сущностей системы умного дома
+
+' Определяем сущности
+
+entity "Пользователь" as User {
+    * user_id : UUID <<PK>>
+    --
+    username : string <<UNIQUE>>
+    password_hash : string
+    email : string <<UNIQUE>>
+    full_name : string
+    phone_number : string
+    created_at : datetime
+    updated_at : datetime
+}
+
+entity "Дом" as House {
+    * house_id : UUID <<PK>>
+    --
+    address : string
+    settlement_id : UUID <<FK>>
+    owner_id : UUID <<FK>>
+    created_at : datetime
+    updated_at : datetime
+}
+
+entity "Поселок" as Settlement {
+    * settlement_id : UUID <<PK>>
+    --
+    name : string
+    location : string
+    created_at : datetime
+    updated_at : datetime
+}
+
+entity "Устройство" as Device {
+    * device_id : UUID <<PK>>
+    --
+    device_type_id : UUID <<FK>>
+    serial_number : string <<UNIQUE>>
+    registration_date : datetime
+    house_id : UUID <<FK>>
+    status : string
+    firmware_version : string
+    last_communication : datetime
+    created_at : datetime
+    updated_at : datetime
+}
+
+entity "Тип устройства" as DeviceType {
+    * device_type_id : UUID <<PK>>
+    --
+    type : string
+}
+
+entity "Регистрация устройства" as DeviceRegistration {
+    * registration_id : UUID <<PK>>
+    --
+    device_id : UUID <<FK>>
+    house_id : UUID <<FK>>
+    registration_date : datetime
+    status : string
+}
+
+entity "Данные температуры" as TemperatureData {
+    * data_id : UUID <<PK>>
+    --
+    device_id : UUID <<FK>>
+    temperature : float
+    humidity : float
+    recorded_at : datetime
+}
+
+entity "Метрические данные" as MetricsData {
+    * metric_id : UUID <<PK>>
+    --
+    service_name : string
+    metric_type : string
+    value : float
+    recorded_at : datetime
+}
+
+entity "Сервис" as Service {
+    * service_id : UUID <<PK>>
+    --
+    name : string
+    description : string
+}
+
+' Определяем отношения
+
+' Пользователь владеет домом
+User ||--o{ House : "владеет"
+
+' Поселок содержит дома
+Settlement ||--o{ House : "содержит"
+
+' Дом содержит устройства
+House ||--o{ Device : "содержит"
+
+' Устройство генерирует данные температуры
+Device ||--o{ TemperatureData : "генерирует"
+
+
+' Устройство имеет регистрации
+Device ||--o{ DeviceRegistration : "имеет"
+
+' Устройство сожержит тип устройста
+Device ||--o{ DeviceType: "содержит"
+
+' Дом участвует в регистрации устройства
+House ||--o{ DeviceRegistration : "содержит"
+
+' Сервисы генерируют метрические данные
+Service ||--o{ MetricsData : "генерирует"
+
+' Наследование сервисов от общей сущности
+Service <|-- "Сервис аутентификации" : "extends"
+Service <|-- "Температурный сервис" : "extends"
+Service <|-- "Сервис метрик температуры" : "extends"
+
+@enduml

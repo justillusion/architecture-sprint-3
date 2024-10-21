@@ -1,0 +1,28 @@
+@startuml
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Context.puml
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+
+title C4 Диаграмма компонентов - Централизованная система умного дома для температурного сервиса
+
+' Определяем участников
+Person(user, "Пользователь", "Взаимодействует с системой через мобильное приложение или веб-интерфейс.")
+
+' Внешние компоненты
+Component_Ext(devices, "Устройства домов", "devices")
+Component_Ext(client_app, "Приложение пользователя")
+
+' Центральная система умного дома
+Container_Boundary(temperature_processing, "Обработка температурных данных") {
+  Component(temperature_service, "Температурный сервис", "Java Service", "Обрабатывает данные о температуре.")
+  ContainerDb(temperature_data_db, "База данных температурных данных", "PostgreSQL", "Хранит данные настройке, собранные от устройств.")
+}
+
+Rel(user, client_app, "Использует")
+Rel(client_app, temperature_service, "Запросы API", "HTTPS/JSON")
+
+Rel(devices, temperature_service, "Управление температурой / передача метрик", "HTTPS/JSON", "Использует канал связи")
+Rel(temperature_service, temperature_data_db, "Чтение/Запись", "SQL")
+
+@enduml

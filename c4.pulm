@@ -1,0 +1,101 @@
+@startuml
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Context.puml
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+
+title C4 Диаграмма компонентов - Централизованная система умного дома с отдельной базой данных для Температурного сервиса
+
+' Определяем участников
+Person(user, "Пользователь", "Взаимодействует с системой через мобильное приложение или веб-интерфейс.")
+
+' Интерфейсы пользователя
+Component_Ext(client_app, "Приложение пользователя")
+
+' Центральная система умного дома
+Container_Boundary(smart_house_system, "Централизованная система умного дома") {
+    Container(api_gateway, "API Gateway", "Java/Spring Boot", "Единый вход для всех запросов, маршрутизирует запросы к микросервисам и обеспечивает безопасность.")
+
+    ' Разбиваем на домены
+    ' Домены:
+    ' - Управление пользователями
+    ' - Управление устройствами
+    ' - Сбор метрик
+
+    ' Управление пользователями
+    Container_Boundary(user_management, "Управление пользователями") {
+        Component(auth_service, "Сервис аутентификации и авторизации", "Java Service", "Управляет пользователями и правами доступа.")
+        ContainerDb(user_db, "База данных пользователей", "PostgreSQL", "Хранит информацию о пользователях и правах доступа.")
+    }
+
+    ' Управление устройствами
+    Container_Boundary(device_management, "Управление устройствами") {
+        Component(device_registration_service, "Сервис регистрации устройств", "Java Service", "Регистрация и настройка новых устройств в домах.")
+        ContainerDb(device_db, "База данных устройств", "PostgreSQL", "Содержит информацию об устройствах (идентификаторы, конфигурации).")
+    }
+
+    ' Обработка температурных данных
+    Container_Boundary(temperature_processing, "Обработка температурных данных") {
+        Component(temperature_service, "Температурный сервис", "Java Service", "Обрабатывает данные о температуре из Kafka.")
+        ContainerDb(temperature_data_db, "База данных температурных данных", "PostgreSQL", "Хранит данные о температуре, собранные от устройств.")
+    }
+
+    ' Сбор метрик
+    Container_Boundary(metrics_collection, "Сбор метрик") {
+        Component(temperature_metrics_service, "Сервис метрик температуры", "Java Service", "Сбор и анализ метрик")
+        ContainerDb(metrics_db_temperature, "База данных метрик температуры", "PostgreSQL", "Хранит метрики.")
+    }
+
+    ' Брокер сообщений
+    Component(message_broker, "Kafka", "Kafka", "Обеспечивает асинхронное взаимодействие между микросервисами.")
+
+    ' MQTT Брокер
+    Component(mqtt_broker, "MQTT Брокер", "Eclipse Mosquitto", "Принимает данные от устройств по протоколу MQTT.")
+
+    ' Промежуточный обработчик MQTT сообщений
+    Component(mqtt_to_kafka_bridge, "MQTT-Kafka Bridge", "Java Service", "Обрабатывает сообщения от MQTT брокера и публикует их в Kafka.")
+}
+
+' Внешние компоненты
+Component_Ext(devices, "Устройства домов", "IoT Devices", "Устройства в домах.")
+
+' Определяем связи
+Rel(user, client_app, "Использует")
+
+Rel(client_app, api_gateway, "Запросы API", "HTTPS/JSON")
+
+' Устройства сначала регистрируются через API Gateway
+Rel(devices, api_gateway, "Регистрация устройств", "HTTPS/JSON", "Использует Интернет")
+
+' API Gateway направляет запросы на регистрацию в Сервис регистрации устройств
+Rel(api_gateway, device_registration_service, "Регистрация устройств", "HTTP/JSON")
+
+' После успешной регистрации устройства подключаются к MQTT Брокеру
+Rel(devices, mqtt_broker, "Передача данных", "MQTT", "После регистрации")
+
+' MQTT брокер передает сообщения в MQTT-Kafka Bridge
+Rel(mqtt_broker, mqtt_to_kafka_bridge, "Публикация сообщений", "MQTT")
+
+' MQTT-Kafka Bridge публикует сообщения в Kafka
+Rel(mqtt_to_kafka_bridge, message_broker, "Публикация сообщений", "Kafka Producer")
+
+' Температурный сервис подписывается на топики в Kafka
+Rel(message_broker, temperature_service, "Потребление сообщений", "Kafka Consumer")
+
+' Температурный сервис взаимодействует со своей базой данных
+Rel(temperature_service, temperature_data_db, "Чтение/Запись", "SQL")
+
+' API Gateway общается с микросервисами
+Rel(api_gateway, auth_service, "Аутентификация", "HTTP/JSON")
+Rel(api_gateway, temperature_service, "Запросы", "HTTP/JSON")
+Rel(api_gateway, temperature_metrics_service, "Запрос метрик", "HTTP/JSON")
+
+' Микросервисы взаимодействуют с базами данных
+Rel(auth_service, user_db, "Чтение/Запись", "SQL")
+Rel(device_registration_service, device_db, "Чтение/Запись", "SQL")
+Rel(temperature_metrics_service, metrics_db_temperature, "Чтение/Запись", "SQL")
+
+' Температурный сервис отправляет метрики в Сервис метрик температуры
+Rel(temperature_service, temperature_metrics_service, "Отправка метрик", "HTTP/JSON")
+
+@enduml
