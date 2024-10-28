@@ -113,7 +113,16 @@ paths:
             port: 8081
 
   /api/v1/temperature/{deviceId}/:
-    get: Получение данных от температурного сервиса
+    get:
+      summary: Получение данных от температурного сервиса
+      parameters:
+        - in: path
+          name: deviceId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: UUID устройства
       responses:
         '200':
           description: Информация температуре
@@ -130,7 +139,16 @@ paths:
 
 
   /api/v1/temperature/{deviceId}/set-current:
-    post: Устновка температуры
+    post: 
+      summary: Устновка температуры
+      parameters:
+        - in: path
+          name: deviceId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: UUID устройства
       requestBody:
           required: true
           content:
@@ -141,8 +159,15 @@ paths:
                   value:
                     type: number
                     format: float
-                  required:
-                    - value
+                required:
+                  - value
+      responses:
+        '200':
+          description: Установка температуры
+          content:
+            application/json:
+              schema:
+                type: object
       x-kusk:
         upstream:
           service:
@@ -194,6 +219,8 @@ paths:
             application/json:
               schema:
                 type: array
+                items: 
+                  type: object
       x-kusk:
         upstream:
           service:
