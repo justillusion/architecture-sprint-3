@@ -1,22 +1,229 @@
 openapi: 3.0.0
 info:
-  title: simple-api
+  title: smart-house api
   version: 0.1.0
 
 paths:
-  /hello:
-    get:
+  /api/v1/auth/register:
+    post:
+      summary: Регистрация нового пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                fullName:
+                  type: string
+                phoneNumber:
+                  type: string
+              required:
+                - username
+                - email
+                - password
       responses:
-        '200':
-          description: A simple hello world!
-          content:
-            text/plain:
-              schema:
-                type: string
-              example: Hello from a mocked response!
+        '201':
+          description: Пользователь успешно создан
+        '400':
+          description: Ошибка валидации данных
       x-kusk:
         upstream:
           service:
-            name: hello-world-svc
+            name: auth-service
             namespace: default
             port: 8080
+  /api/v1/auth/login:
+    post:
+      summary: Аутентификация пользователя и получение JWT-токена
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                type: object
+      x-kusk:
+        upstream:
+          service:
+            name: auth-service
+            namespace: default
+            port: 8080
+
+  /api/v1/devices/register:
+    post:
+      summary: Регистрация нового устройства
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Устройство успешно зарегистрировано
+          content:
+            application/json:
+              schema:
+                type: object
+      x-kusk:
+        upstream:
+          service:
+            name: device-registration-service
+            namespace: default
+            port: 8081
+
+  /api/v1/devices/{deviceId}:
+    get:
+      summary: Получение информации об устройстве
+      parameters:
+        - in: path
+          name: deviceId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: UUID устройства
+      responses:
+        '200':
+          description: Информация об устройстве
+          content:
+            application/json:
+              schema:
+                type: object
+      x-kusk:
+        upstream:
+          service:
+            name: device-service
+            namespace: default
+            port: 8081
+
+  /api/v1/temperature/{deviceId}/:
+    get:
+      summary: Получение данных от температурного сервиса
+      parameters:
+        - in: path
+          name: deviceId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: UUID устройства
+      responses:
+        '200':
+          description: Информация температуре
+          content:
+            application/json:
+              schema:
+                type: object
+      x-kusk:
+          upstream:
+            service:
+              name: temperature-service
+              namespace: default
+              port: 8081
+
+
+  /api/v1/temperature/{deviceId}/set-current:
+    post: 
+      summary: Устновка температуры
+      parameters:
+        - in: path
+          name: deviceId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: UUID устройства
+      requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: 
+                  value:
+                    type: number
+                    format: float
+                required:
+                  - value
+      responses:
+        '200':
+          description: Установка температуры
+          content:
+            application/json:
+              schema:
+                type: object
+      x-kusk:
+        upstream:
+          service:
+            name: temperature-service
+            namespace: default
+            port: 8082
+
+  /api/v1/{deviceId}/telemetry/latest:
+    get:
+      summary: Получение последних данных устройства
+      parameters:
+        - in: path
+          name: deviceId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: UUID устройства
+      responses:
+        '200':
+          description: Последние данные устройства
+          content:
+            application/json:
+              schema:
+                type: object
+      x-kusk:
+        upstream:
+          service:
+            name: metrics-service
+            namespace: default
+            port: 8082
+
+  /api/v1/{deviceId}/telemetry:
+    get:
+      summary: Получение исторических данных устройства
+      parameters:
+        - in: path
+          name: deviceId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: UUID устройства
+    
+      responses:
+        '200':
+          description: Исторические данные об усбройстве
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  type: object
+      x-kusk:
+        upstream:
+          service:
+            name: metrics-service
+            namespace: default
+            port: 8082
