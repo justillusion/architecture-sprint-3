@@ -1,0 +1,98 @@
+@startuml
+title Диаграмма классов - Централизованная система умного дома
+
+class User {
+    +UUID id
+    +String username
+    +String email
+    +String password
+    +String fullName
+    +String phoneNumber
+    +register()
+    +login()
+}
+
+class Device {
+    +UUID id
+    +String name
+    +String type
+    +String configuration
+    +registerDevice()
+    +updateConfiguration()
+}
+
+class TemperatureData {
+    +UUID id
+    +UUID deviceId
+    +float value
+    +DateTime timestamp
+    +recordTemperature()
+}
+
+class Metrics {
+    +UUID id
+    +UUID deviceId
+    +List<Metrics> data
+    +collectMetrics()
+}
+
+package "Сервисы" {
+    class AuthService {
+        +registerUser(user: User): void
+        +authenticate(credentials: Credentials): JWT
+    }
+
+    class DeviceRegistrationService {
+        +registerDevice(device: Device): void
+        +getDeviceById(deviceId: UUID): Device
+    }
+
+    class TemperatureService {
+        +getTemperature(deviceId: UUID): TemperatureData
+        +setTemperature(deviceId: UUID, value: float): void
+    }
+
+    class MetricsService {
+        +getLatestTelemetry(deviceId: UUID): Metrics
+        +getHistoricalTelemetry(deviceId: UUID): List<Metrics>
+    }
+}
+
+package "Взаимодействие" {
+    class APIController {
+        +registerUser(request: RegisterRequest): Response
+        +login(request: LoginRequest): Response
+        +registerDevice(request: RegisterDeviceRequest): Response
+        +getDevice(deviceId: UUID): Device
+        +getTemperature(deviceId: UUID): TemperatureData
+        +setTemperature(deviceId: UUID, value: float): Response
+        +getLatestTelemetry(deviceId: UUID): Metrics
+        +getHistoricalTelemetry(deviceId: UUID): List<Metrics>
+    }
+
+    class MQTTBroker {
+        +publish(topic: String, message: String): void
+        +subscribe(topic: String, callback: Function): void
+    }
+
+    class KafkaBroker {
+        +produce(topic: String, message: String): void
+        +consume(topic: String, callback: Function): void
+    }
+}
+
+User -- "many" Device : управляет >
+Device -- "many" TemperatureData : генерирует >
+Device -- "many" Metrics : имеет >
+
+APIController --> AuthService : вызывает >
+APIController --> DeviceRegistrationService : вызывает >
+APIController --> TemperatureService : вызывает >
+APIController --> MetricsService : вызывает >
+
+MQTTBroker --> KafkaBridge : передает сообщения >
+KafkaBridge --> KafkaBroker : публикует в Kafka >
+TemperatureService --> KafkaBroker : получает сообщения >
+UserApps --> APIController : передает запросы >
+
+@enduml
